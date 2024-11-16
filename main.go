@@ -23,17 +23,21 @@ type Todo struct {
 var collection *mongo.Collection
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error Loading .env file")
+
+	if os.Getenv("ENV") != "production" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Fatal("Error Loading .env file")
+		}
 	}
+
 	MONGO_URI := os.Getenv("MONGO_URI")
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
 		PORT = "5000"
 	}
-	clietOptions := options.Client().ApplyURI(MONGO_URI)
-	client, err := mongo.Connect(context.Background(), clietOptions)
+	clientOptions := options.Client().ApplyURI(MONGO_URI)
+	client, err := mongo.Connect(context.Background(), clientOptions)
 
 	if err != nil {
 		log.Fatal(err)
@@ -44,16 +48,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("connected to mongodb atlas")
+	fmt.Println("Connected to MongoDB Atlas")
 	collection = client.Database("Go_React_Todo_App").Collection("Todos")
+
+	// Initialize Fiber app
 	app := fiber.New()
 
-	// app.Get("/api/gettodo", GetTodo)
+	// Add CORS middleware
+	// app.Use(cors.New(cors.Config{
+	// 	AllowOrigins: "*", // Allow all origins (you can specify specific origins if needed)
+	// 	AllowMethods: "GET,POST,PATCH,DELETE",
+	// 	AllowHeaders: "Origin, Content-Type, Accept",
+	// }))
+
+	// Set up routes
 	app.Get("/api/gettodos", GetTodos)
 	app.Post("/api/createtodo", CreateTodo)
 	app.Patch("/api/updatetodo/:id", UpdateTodo)
 	app.Delete("/api/deletetodo/:id", DeleteTodo)
-	app.Listen(":" + PORT)
+
+	if os.Getenv("ENV") == "production" {
+		app.Static("/", "./client/dist")
+	}
+	// Start the server
+	log.Fatal(app.Listen(":" + PORT))
 }
 
 // func GetTodo(c *fiber.Ctx) error {
